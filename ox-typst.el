@@ -118,6 +118,11 @@ major-mode."
   :type 'string
   :group 'org-export-typst)
 
+(defcustom org-typst-heading-short-form nil
+  "How to show headings. If true uses the = Heading instead of #heading(...)[...]"
+  :type 'symbol
+  :group 'org-export-typst)
+
 (defcustom org-typst-inline-image-rules
   `(("file" . ,(rx "." (or "jpeg" "jpg" "png" "svg" "webp" "gif") eos))
     ("https" . ,(rx "." (or "jpeg" "jpg" "png" "svg" "webp" "gif") eos)))
@@ -302,17 +307,25 @@ will result in `ox-typst' to apply the colors to the code block."
               (title (org-export-data (org-element-property :title headline)
                                       info))
               (label (org-typst--label nil headline info)))
-    (concat
-     (format "#heading(level: %s%s)"
-             level
-             (if (or (org-export-excluded-from-toc-p headline info)
-                     (not (org-export-numbered-headline-p headline info)))
-                 ", outlined: false, numbering: none"
-               ""))
-     (format "[%s]" title)
-     label
-     "\n"
-     contents)))
+    (if org-typst-heading-short-form
+        (concat
+         (apply #'concat (make-list level "="))
+         " "
+         title
+         label
+         "\n"
+         contents)
+      (concat
+        (format "#heading(level: %s%s)"
+                level
+                (if (or (org-export-excluded-from-toc-p headline info)
+                        (not (org-export-numbered-headline-p headline info)))
+                    ", outlined: false, numbering: none"
+                  ""))
+        (format "[%s]" title)
+        label
+        "\n"
+        contents))))
 
 (defun org-typst-horizontal-rule (_horizontal-rule _contents _info)
   "#line(length: 100%)")
