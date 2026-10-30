@@ -441,13 +441,17 @@ will result in `ox-typst' to apply the colors to the code block."
                (org-export-get-reference target info))))))
     (cond
      ((org-export-inline-image-p link org-typst-inline-image-rules)
-      (org-typst--figure (format
-                          "#image(%s)"
-                          (org-typst--as-typst-path
-                           (org-element-property
-                            :path (org-export-link-localise link))))
-                         link
-                         info))
+      (let* ((parent (org-element-parent-element link))
+             (attrs (org-typst--attrs-to-typst-params
+                     (org-export-read-attribute :attr_typst parent)))
+             (image (format "#image(%s%s)"
+                            (org-typst--as-typst-path
+                             (org-element-property
+                              :path (org-export-link-localise link)))
+                            (if (string-empty-p attrs)
+                                ""
+                                (format ", %s" attrs)))))
+        (org-typst--figure image link info)))
      ((equal (org-element-property :type link) "radio")
       (when-let* ((target (org-export-resolve-radio-link link info))
                   (ref (funcall resolve-headline-friendly target)))
@@ -1193,6 +1197,19 @@ Return PDF file's name."
                                         (shell-quote-argument key)
                                         (shell-quote-argument path)))))
                     (cadr prefix-files))))))
+
+(defun org-typst--attrs-to-typst-params (attrs)
+  "Convert org's ATTR_TYPST syntax to Typst's params
+
+For example, it converts \":width 50% :height 50%\" to \"width: 50%, height: 50%\"."
+  (mapconcat
+   (lambda (pair)
+     (format "%s: %s"
+	     (substring (format "%s" (car pair)) 1)
+	     (cdr pair)))
+   (cl-loop for (key val) on attrs by #'cddr
+	    collect (cons key val))
+   ", "))
 
 (defun org-typst-compile (typst-file)
   "Compile TYPST-FILE into PDF.
